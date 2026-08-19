@@ -1,0 +1,68 @@
+---
+
+name: Lint and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install zizmor and ruff
+        run: pipx install zizmor ruff
+
+      - name: Analyze action.yaml
+        run: zizmor --persona=pedantic --format=github action.yaml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check ruff formating
+        run: ruff format --target-version py310 --diff output_oidc_claims_action.py
+
+      - name: Check ruff linting
+        run: ruff check --target-version py310 output_oidc_claims_action.py
+
+  test:
+    name: Integration test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - ubuntu-26.04
+          - ubuntu-26.04-arm
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Get OIDC claims
+        id: self_test
+        uses: $/
+        with:
+          job_summary: "false"
+
+      - name: Sanity check repository claim
+        if: fromJson(steps.self_test.outputs.claims).repository != github.repository
+        run: echo "Unexpected repository claim"; exit 1

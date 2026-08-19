@@ -1,0 +1,26 @@
+---
+
+name: OIDC claims tester
+description: Outputs a job's OIDC claims
+author: Andreas Olsson
+
+inputs:
+  job_summary:
+    description: Whatever to add the job's OIDC claims to the job summary
+    default: "true"
+
+outputs:
+  claims:
+    description: The job's OIDC claims
+    value: ${{ steps.run_action.outputs.claims }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run Action
+      id: run_action
+      shell: bash
+      run: /usr/bin/python3 output_oidc_claims_action.py
+      working-directory: ${{ github.action_path }}
+      env:
+        GHA_JOB_SUMMARY: ${{ inputs.job_summary }}
