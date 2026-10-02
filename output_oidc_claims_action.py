@@ -39,7 +39,7 @@ def _request_github_jwt() -> str:
     return jwt_token
 
 
-def _extract_claims(jwt_token: str) -> dict[str, str | int]:
+def _extract_claims(jwt_token: str, selection: str) -> dict[str, str | int]:
     try:
         claims = jwt.decode(jwt_token, options={"verify_signature": False})
     except jwt.exceptions.DecodeError as decode_error:
@@ -48,14 +48,27 @@ def _extract_claims(jwt_token: str) -> dict[str, str | int]:
         _set_error_message(title, message)
         raise ActionError(title) from decode_error
 
-    return claims
+    if not selection:
+        return claims
+
+    filtered_claims = {}
+    for name in selection.lower().split(","):
+        name = name.strip()
+        if not name:
+            continue
+        if name in claims:
+            filtered_claims[name] = claims[name]
+
+    sorted_filtered_claims = dict(sorted(filtered_claims.items()))
+    return sorted_filtered_claims
 
 
 def main() -> None:
+    selection = os.getenv("GHA_SELECTION", "").strip()
     job_summary = os.getenv("GHA_JOB_SUMMARY", "true").strip()
 
     jwt_token = _request_github_jwt()
-    claims = _extract_claims(jwt_token)
+    claims = _extract_claims(jwt_token, selection)
     json_pretty = json.dumps(claims, indent=2)
     json_plain = json.dumps(claims)
 

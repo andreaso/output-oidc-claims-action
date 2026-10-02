@@ -63,6 +63,34 @@ jobs:
         with:
           job_summary: "false"
 
+      - name: Get selected OIDC claims
+        id: self_test_selected
+        uses: $/
+        with:
+          job_summary: "false"
+          claims: run_id, repository_id
+
+      - name: Get bogus OIDC claims
+        id: self_test_bogus
+        uses: $/
+        with:
+          job_summary: "false"
+          claims: bogus
+
+      - name: Define expected responses
+        id: expected
+        run: |
+          echo "self_test_selected={\"repository_id\": \"${GITHUB_REPOSITORY_ID}\", \"run_id\": \"${GITHUB_RUN_ID}\"}" >> "$GITHUB_OUTPUT"
+          echo "self_test_bogus={}" >> "$GITHUB_OUTPUT"
+
       - name: Sanity check repository claim
         if: fromJson(steps.self_test.outputs.claims).repository != github.repository
         run: echo "Unexpected repository claim"; exit 1
+
+      - name: Sanity check selected claims
+        if: steps.self_test_selected.outputs.claims != steps.expected.outputs.self_test_selected
+        run: echo "Unexpected selected claims"; exit 1
+
+      - name: Sanity check bogus claims
+        if: steps.self_test_bogus.outputs.claims != steps.expected.outputs.self_test_bogus
+        run: echo "Unexpected bogus claims"; exit 1
